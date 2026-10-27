@@ -173,9 +173,10 @@
       const b = document.createElement('i'); const n = h <= E.NIGHT_MAX_HOUR; if (n) b.className = 'n';
       b.title = h + ':00 — ' + (n ? 'ночная' : 'дневная') + ' смена'; earl.appendChild(b);
     }
-    for (const h of [0, 6, 14, 23]) {
+    for (const h of [0, 6, E.NIGHT_MAX_HOUR + 1, 23]) {
       const s = document.createElement('span'); s.textContent = h; s.style.left = ((h + 0.5) / 24 * 100) + '%'; ticks.appendChild(s);
     }
+    $('#ruleText').textContent = 'По шкале — час начала доставки. Доставка с ' + E.NIGHT_MAX_HOUR + ':00 ещё ночная, с ' + (E.NIGHT_MAX_HOUR + 1) + ':00 уже дневная. Минуты и секунды не учитываются.';
   })();
 
   let toastTimer = 0;
