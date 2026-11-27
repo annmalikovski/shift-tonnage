@@ -241,6 +241,7 @@
         qty: r.qty, shift, weight: c.pos.weight, kg: r.qty * c.pos.weight / 1000,
       };
       if (!shift) { noShift.push(d); continue; }
+      d.shiftDay = shift === 'Ночь' ? new Date((dayNum(r.day) - 1) * 86400000) : r.day;
       detail.push(d);
     }
     detail.sort((a, b) => (a.day - b.day) || ((a.dlv || 0) - (b.dlv || 0)) || String(a.num).localeCompare(String(b.num)) || a.position.localeCompare(b.position, 'ru'));
@@ -276,9 +277,9 @@
 
     const dayMap = new Map();
     for (const d of detail) {
-      const k = dayNum(d.day);
+      const k = dayNum(d.shiftDay);
       let r = dayMap.get(k);
-      if (!r) { r = { day: d.day, mainDay: 0, mainNight: 0, otherDay: 0, otherNight: 0 }; dayMap.set(k, r); }
+      if (!r) { r = { day: d.shiftDay, mainDay: 0, mainNight: 0, otherDay: 0, otherNight: 0 }; dayMap.set(k, r); }
       const main = d.block === BLOCK_MAIN;
       if (d.shift === 'День') r[main ? 'mainDay' : 'otherDay'] += d.kg; else r[main ? 'mainNight' : 'otherNight'] += d.kg;
     }
@@ -309,7 +310,7 @@
     const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
     const border = { bottom: { style: 'thin', color: { argb: C.line } } };
     const F_QTY = '#,##0', F_KG = '#,##0.0', F_T = '0.000', F_PCT = '0.0%';
-    const subtitle = [res.meta.restaurant, res.meta.periodLabel ? 'учетные дни ' + res.meta.periodLabel : '', opts.fileName ? 'выгрузка: ' + opts.fileName : ''].filter(Boolean).join(' · ');
+    const subtitle = [res.meta.restaurant, res.meta.periodLabel ? 'учетные дни iiko ' + res.meta.periodLabel : '', opts.fileName ? 'выгрузка: ' + opts.fileName : ''].filter(Boolean).join(' · ');
 
     function summarySheet(B, sheetName, heading, scope) {
       const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 6 }] });
@@ -370,12 +371,13 @@
     // По дням
     {
       const ws = wb.addWorksheet('По дням', { views: [{ state: 'frozen', ySplit: 4 }] });
-      ws.columns = [{ width: 14 }].concat(Array(7).fill({ width: 13 }));
-      ws.getCell('A1').value = 'Тоннаж по учетным дням и сменам · ' + res.meta.periodLabel;
+      ws.columns = [{ width: 20 }].concat(Array(7).fill({ width: 13 }));
+      ws.getCell('A1').value = 'Тоннаж по дате начала смены';
       ws.getCell('A1').font = { bold: true, size: 13 };
+      ws.getCell('A2').value = 'Для ночной смены последней даты нужен следующий учетный день iiko.';
       const h1 = ws.getRow(3); h1.values = ['', BLOCK_MAIN, '', BLOCK_OTHER, '', 'Всего', '', ''];
       ws.mergeCells(3, 2, 3, 3); ws.mergeCells(3, 4, 3, 5); ws.mergeCells(3, 6, 3, 8);
-      const h2 = ws.getRow(4); h2.values = ['Учетный день', 'День, кг', 'Ночь, кг', 'День, кг', 'Ночь, кг', 'День, т', 'Ночь, т', 'Всего, т'];
+      const h2 = ws.getRow(4); h2.values = ['Дата начала смены', 'День, кг', 'Ночь, кг', 'День, кг', 'Ночь, кг', 'День, т', 'Ночь, т', 'Всего, т'];
       for (const r of [h1, h2]) r.eachCell({ includeEmpty: true }, (c) => { c.font = { bold: true }; c.fill = fill(C.head); c.alignment = { horizontal: 'center', wrapText: true }; });
       let row = 5;
       const tot = { mainDay: 0, mainNight: 0, otherDay: 0, otherNight: 0 };
@@ -395,15 +397,15 @@
     {
       const ws = wb.addWorksheet('Детализация', { views: [{ state: 'frozen', ySplit: 1 }] });
       const cols = [
-        ['Учетный день', 12], ['Время открытия', 16], ['Планируемое время доставки', 16], ['Час доставки', 8],
+        ['Учетный день iiko', 18], ['Время открытия', 16], ['Планируемое время доставки', 16], ['Час доставки', 8],
         ['Заказ принят', 14], ['№ доставки', 11], ['Категория в отчёте', 18], ['Блюдо в отчёте', 30], ['Размер в отчёте', 9],
-        ['Позиция', 34], ['Группа', 24], ['Блок', 10], ['Как продано', 16], ['Кол-во, шт', 9], ['Смена', 8], ['Вес 1 шт, г', 10], ['Итого, кг', 10],
+        ['Позиция', 34], ['Группа', 24], ['Блок', 10], ['Как продано', 16], ['Кол-во, шт', 9], ['Смена', 8], ['Вес 1 шт, г', 10], ['Итого, кг', 10], ['Дата начала смены', 20],
       ];
       ws.columns = cols.map(([header, width]) => ({ header, width }));
       ws.getRow(1).eachCell((c) => { c.font = { bold: true }; c.fill = fill(C.head); c.alignment = { wrapText: true, vertical: 'middle' }; });
       for (const d of res.detail) {
-        const r = ws.addRow([d.day, d.open, d.dlv, d.hour, d.accepted, d.num ? (isNaN(+d.num) ? d.num : +d.num) : '', d.cat, d.dish, d.size, d.position, d.group, d.block, d.kind, d.qty, d.shift, d.weight, d.kg]);
-        r.getCell(1).numFmt = 'dd.mm.yyyy';
+        const r = ws.addRow([d.day, d.open, d.dlv, d.hour, d.accepted, d.num ? (isNaN(+d.num) ? d.num : +d.num) : '', d.cat, d.dish, d.size, d.position, d.group, d.block, d.kind, d.qty, d.shift, d.weight, d.kg, d.shiftDay]);
+        r.getCell(1).numFmt = r.getCell(18).numFmt = 'dd.mm.yyyy';
         r.getCell(2).numFmt = r.getCell(3).numFmt = 'dd.mm.yyyy hh:mm';
         r.getCell(17).numFmt = '0.000';
         r.getCell(15).fill = fill(d.shift === 'День' ? C.day : C.night);
@@ -452,6 +454,9 @@
         ['Правила распределения по сменам', true],
         ['• Дневная смена: все заказы, принятые в тот же учетный день (дата открытия чека = учетный день), при любом времени доставки; плюс заказы, принятые в предыдущие даты, с началом доставки с ' + (NIGHT_MAX_HOUR + 1) + ':00.'],
         ['• Ночная смена: заказы, принятые раньше учетного дня, с началом доставки до ' + NIGHT_MAX_HOUR + ':00 включительно. Учитывается только час начала доставки: ' + NIGHT_MAX_HOUR + ' ч — ночь, ' + (NIGHT_MAX_HOUR + 1) + ' ч — день; минуты и секунды не важны.'],
+        [''],
+        ['Дата начала смены', true],
+        ['Дневная смена учитывается датой учетного дня iiko, ночная — предыдущей календарной датой. Для полной последней ночи включите в выгрузку следующий учетный день. Итоги по позициям включают всю выгрузку.'],
         [''],
         ['Как считается', true],
         ['• Вес — из справочника (вес по номиналу из меню, например «900+-50 гр» → 900 г). Справочник правится на странице расчёта.'],

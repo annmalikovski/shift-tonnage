@@ -247,8 +247,9 @@
   }
   function daysTable(res) {
     const max = Math.max(1, ...res.byDay.map((r) => r.mainDay + r.mainNight + r.otherDay + r.otherNight));
-    let h = '<table><thead><tr class="top"><th></th><th colspan="2">' + E.BLOCK_MAIN + ', кг</th><th colspan="2">Прочие, кг</th><th colspan="4">Всего</th></tr>' +
-      '<tr><th>Учетный день</th><th class="d">день</th><th class="n">ночь</th><th class="d">день</th><th class="n">ночь</th><th class="d">день, т</th><th class="n">ночь, т</th><th>всего, т</th><th></th></tr></thead><tbody>';
+    let h = '<p class="small muted">Для полной последней ночи включите в выгрузку следующий учетный день iiko. Итоги по позициям включают всю выгрузку.</p>' +
+      '<table><thead><tr class="top"><th></th><th colspan="2">' + E.BLOCK_MAIN + ', кг</th><th colspan="2">Прочие, кг</th><th colspan="4">Всего</th></tr>' +
+      '<tr><th>Дата начала смены</th><th class="d">день</th><th class="n">ночь</th><th class="d">день</th><th class="n">ночь</th><th class="d">день, т</th><th class="n">ночь, т</th><th>всего, т</th><th></th></tr></thead><tbody>';
     const T = { mainDay: 0, mainNight: 0, otherDay: 0, otherNight: 0 };
     for (const r of res.byDay) {
       for (const k in T) T[k] += r[k];
@@ -291,7 +292,7 @@
     if (!S.res) { el.innerHTML = '<div class="panel"><div class="empty"><span class="spin"></span> Жду справочник, чтобы посчитать…</div></div>'; return; }
     const r = S.res, m = r.meta;
     let h = unknownBox(r);
-    h += '<div class="bar"><div><div class="eyebrow">Результат</div><h2>Учетные дни ' + esc(m.periodLabel) + '</h2></div><button class="btn primary" id="dlBtn">Скачать Excel</button></div>';
+    h += '<div class="bar"><div><div class="eyebrow">Результат</div><h2>Учетные дни iiko ' + esc(m.periodLabel) + '</h2></div><button class="btn primary" id="dlBtn">Скачать Excel</button></div>';
     h += '<div class="kpis">' + kpiCard(r.blocks[E.BLOCK_MAIN], E.BLOCK_MAIN, 'Русские пироги и наборы мини-русских, Лапландский, Лиссабонский, Баноффи пай') +
       kpiCard(r.blocks[E.BLOCK_OTHER], E.BLOCK_OTHER, 'Остальные песочные пироги 24 и 18 см, тарталетки и наборы тарталеток') + '</div>';
     h += '<div class="bar"><div class="seg" role="group" aria-label="Таблица" id="resTabs">' +
